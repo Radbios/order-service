@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Http;
 
 class OrderController extends Controller
 {
+    public function index()
+    {
+        return Order::where("user_id", Auth::user()->id)->get();
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -54,4 +59,19 @@ class OrderController extends Controller
         return response()->json(['order' => $order->load('items')], 201);
     }
 
+    public function show(Order $order)
+    {
+        return $order;
+    }
+
+    public function update(Request $request, Order $order)
+    {
+        $order->update([
+            "status" => "paid"
+        ]);
+
+        $order->refresh();
+
+        return $order;
+    }
 }
