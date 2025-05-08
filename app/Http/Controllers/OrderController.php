@@ -20,7 +20,7 @@ class OrderController extends Controller
         $categories = OrderItem::whereHas('order', function ($query) {
             $query->where('user_id', Auth::user()->id);
         })->get()->map(function($order) {
-            $response = Http::get('127.0.0.1:8000/api/products/' . $order['product_id']);
+            $response = Http::get(env("APP_GATEWAY") . '/catalog/products/' . $order['product_id']);
             $product = $response->json("data");
             return (object)[
                 "category" => $product['category'],
@@ -42,7 +42,7 @@ class OrderController extends Controller
     public function top_category()
     {
         $categories = OrderItem::get()->map(function($order) {
-            $response = Http::get('127.0.0.1:8000/api/products/' . $order['product_id']);
+            $response = Http::get(env("APP_GATEWAY") . '/catalog/products/' . $order['product_id']);
             $product = $response->json("data");
             return (object)[
                 "category" => $product['category'],
