@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Auth;
 use App\Models\Order;
+use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -12,6 +13,52 @@ class OrderController extends Controller
     public function index()
     {
         return Order::where("user_id", Auth::user()->id)->get();
+    }
+
+    public function my_top_category()
+    {
+        $categories = OrderItem::whereHas('order', function ($query) {
+            $query->where('user_id', Auth::user()->id);
+        })->get()->map(function($order) {
+            $response = Http::get('127.0.0.1:8000/api/products/' . $order['product_id']);
+            $product = $response->json("data");
+            return (object)[
+                "category" => $product['category'],
+                "quantity" => $order->quantity
+            ];
+        });
+
+        $grouped = $categories->groupBy('category')->map(function ($items) {
+            return $items->sum('quantity');
+        });
+
+        $topCategory = $grouped->sortDesc()->keys()->first();
+
+        return response()->json([
+            'category' => $topCategory,
+        ]);
+    }
+
+    public function top_category()
+    {
+        $categories = OrderItem::get()->map(function($order) {
+            $response = Http::get('127.0.0.1:8000/api/products/' . $order['product_id']);
+            $product = $response->json("data");
+            return (object)[
+                "category" => $product['category'],
+                "quantity" => $order->quantity
+            ];
+        });
+
+        $grouped = $categories->groupBy('category')->map(function ($items) {
+            return $items->sum('quantity');
+        });
+
+        $topCategory = $grouped->sortDesc()->keys()->first();
+
+        return response()->json([
+            'category' => $topCategory,
+        ]);
     }
 
     public function store(Request $request)
@@ -61,12 +108,26 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
+        if(!$order) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Ordem não encontrada"
+            ]);
+        }
+
         $order->load("items");
         return $order;
     }
 
     public function update(Request $request, Order $order)
     {
+        if(!$order) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Ordem não encontrada"
+            ]);
+        }
+
         $order->update([
             "status" => "paid"
         ]);
