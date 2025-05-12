@@ -7,55 +7,101 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+# Order Service - Sistema de E-commerce com Microsserviços
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+O order-service é responsável por registrar e gerenciar os pedidos dos usuários no sistema de e-commerce distribuído. Ele permite criar novos pedidos, consultar o histórico de compras, atualizar o status de um pedido e realizar análises sobre categorias mais compradas.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Funcionalidades
 
-## Learning Laravel
+* Registro de pedidos com múltiplos produtos
+* Consulta de pedidos do usuário autenticado
+* Atualização do status de pedidos para "pago"
+* Identificação da categoria mais comprada por um usuário ou no sistema
+* Consulta de detalhes de pedidos por ID
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Integração com outros serviços
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Este microsserviço interage com:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Serviço         | Finalidade                                                                 |
+| --------------- | -------------------------------------------------------------------------- |
+| catalog-service | Consulta de preço e categoria dos produtos no momento da criação do pedido |
+| payment-service | Atualiza o status do pedido após pagamento                                 |
+| gateway         | Todas as requisições externas passam por ele (`APP_GATEWAY`)               |
 
-## Laravel Sponsors
+## Rotas disponíveis (protegidas com autenticação)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### GET `/api/service/order`
 
-### Premium Partners
+Retorna todos os pedidos do usuário autenticado.
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development/)**
-- **[Active Logic](https://activelogic.com)**
+### POST `/api/service/order`
 
-## Contributing
+Cria um novo pedido com base nos produtos enviados.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+**Corpo da requisição:**
 
-## Code of Conduct
+```json
+{
+  "items": [
+    { "product_id": 1, "quantity": 2 },
+    { "product_id": 3, "quantity": 1 }
+  ],
+  "shipping_cost": 10.0,
+  "shipping_service": "Sedex",
+  "payment_type": "pix"
+}
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+**Resposta de sucesso:**
 
-## Security Vulnerabilities
+```json
+{
+  "order": {
+    "id": 5,
+    "total": 150.0,
+    "status": "pending",
+    "items": [ ... ]
+  }
+}
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### GET `/api/service/order/{order}`
 
-## License
+Consulta os detalhes de um pedido específico.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### PUT `/api/service/order/{order}`
+
+Atualiza o status do pedido para "paid".
+
+### GET `/api/service/order/my-top-category`
+
+Retorna a categoria de produto mais comprada pelo usuário autenticado.
+
+### GET `/api/service/order/top-category`
+
+Retorna a categoria mais comprada entre todos os usuários.
+
+## Estrutura principal
+
+| Arquivo               | Descrição                                                 |
+| --------------------- | --------------------------------------------------------- |
+| `OrderController.php` | Controlador com todos os endpoints relacionados a pedidos |
+| `Order.php`           | Modelo Eloquent do pedido, com relação aos itens          |
+| `OrderItem.php`       | Modelo dos itens do pedido (produto, quantidade, preço)   |
+| `routes/api.php`      | Define as rotas protegidas para operações de pedido       |
+
+## Requisitos
+
+* Laravel 11
+* PHP 8.2+
+* API Gateway configurado
+* Token JWT válido para autenticação
+
+## Observações
+
+Durante a criação de pedidos, o serviço consulta o `catalog-service` para garantir a integridade dos dados (preço e categoria dos produtos). Após o pagamento, o `payment-service` atualiza o status para "paid" e o carrinho é limpo. Esse serviço é um elo crítico no fluxo de compras da aplicação.
+
+---
